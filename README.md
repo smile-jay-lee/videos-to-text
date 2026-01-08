@@ -115,12 +115,30 @@ DEFAULT_AI_PROVIDER=openai
 
 ## 🚀 使用方法
 
-### 启动Web应用
+### 方式一：React 前端 + API 后端（推荐）
+
+**1. 启动后端API服务:**
+```bash
+cd backend
+python main.py
+```
+后端运行在 http://localhost:5000
+
+**2. 启动React前端:**
+```bash
+cd frontend
+npm install  # 首次运行需要安装依赖
+npm run dev
+```
+前端运行在 http://localhost:3000
+
+### 方式二：传统Flask模板（备选）
 
 ```bash
 cd backend
 python main.py
 ```
+直接访问 http://localhost:5000
 
 访问 `http://localhost:5000` 即可使用。
 

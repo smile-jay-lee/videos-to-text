@@ -1,23 +1,54 @@
-# Frontend - 视频转文字前端
+# Videos to Text - React Frontend
 
-## 目录结构
+React + Vite 前端应用
 
-```
-frontend/
-├── templates/        # HTML模板
-│   ├── base.html     # 基础模板
-│   ├── index.html    # 首页
-│   ├── upload.html   # 上传页面
-│   └── result.html   # 结果展示页面
-└── static/           # 静态资源
-    ├── css/          # 样式文件
-    │   └── style.css
-    ├── js/           # JavaScript文件
-    └── uploads/      # 文件上传目录
+## 技术栈
+
+- React 18
+- Vite (构建工具)
+- Axios (HTTP 客户端)
+
+## 安装依赖
+
+```bash
+npm install
 ```
 
-## 说明
+## 开发
 
-前端使用 Flask 模板引擎渲染，静态文件由 Flask 提供服务。
+```bash
+npm run dev
+```
 
-所有页面继承自 `base.html` 基础模板，保持统一的样式和结构。
+访问 http://localhost:3000
+
+## 构建
+
+```bash
+npm run build
+```
+
+构建输出在 `dist/` 目录
+
+## 环境变量
+
+创建 `.env.local` 文件配置 API 地址：
+
+```
+VITE_API_URL=http://localhost:5000/api
+```
+
+## 项目结构
+
+```
+src/
+├── components/          # React 组件
+│   ├── UploadPage.jsx   # 上传页面
+│   └── ResultPage.jsx   # 结果页面
+├── utils/               # 工具函数
+│   └── api.js           # API 调用
+├── App.jsx              # 主应用组件
+├── App.css              # 应用样式
+├── main.jsx             # 入口文件
+└── index.css            # 全局样式
+```
