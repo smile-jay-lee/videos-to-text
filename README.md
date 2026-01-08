@@ -1,4 +1,4 @@
-# videos to text
+# Videos to Text - 视频转文字智能转录系统
 
 基于 OpenAI Whisper 的智能语音识别系统，支持视频/音频转文字、AI文本润色和智能摘要生成。
 
@@ -13,6 +13,26 @@
 - 📊 **多格式导出**：支持TXT、SRT字幕格式
 - 🌐 **Web界面**：简洁美观的图形化操作界面
 - ⚡ **大文件支持**：自动分段处理大型文件（最大500MB）
+
+## 📁 项目结构
+
+```
+videos-to-text/
+├── backend/              # 后端代码
+│   ├── app/              # Flask应用
+│   ├── core/             # 核心功能（音频提取、Whisper引擎、AI处理）
+│   ├── services/         # 业务逻辑层
+│   ├── utils/            # 工具类
+│   ├── main.py           # 应用入口
+│   └── requirements.txt  # Python依赖
+├── frontend/             # 前端代码
+│   ├── templates/        # HTML模板
+│   └── static/           # 静态资源（CSS、JS、上传文件）
+├── history/              # 历史文件和早期版本
+├── outputs/              # 输出文件目录
+├── .env                  # 环境变量配置（不提交到Git）
+├── .env.example          # 环境变量示例
+└── README.md             # 项目说明
 
 ## 🖼️ 功能展示
 
@@ -62,19 +82,20 @@ sudo apt install ffmpeg
 ### 3. 克隆项目
 
 ```bash
-git clone <your-repo-url>
-cd "vedio to text"
+git clone https://github.com/smile-jay-lee/videos-to-text.git
+cd videos-to-text
 ```
 
 ### 4. 安装Python依赖
 
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
 ### 5. 配置环境变量
 
-复制 `.env.example` 为 `.env` 并配置：
+在项目根目录复制 `.env.example` 为 `.env` 并配置：
 
 ```bash
 # Flask配置
@@ -97,6 +118,7 @@ DEFAULT_AI_PROVIDER=openai
 ### 启动Web应用
 
 ```bash
+cd backend
 python main.py
 ```
 

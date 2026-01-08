@@ -15,8 +15,9 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     
     # 文件上传配置
-    UPLOAD_FOLDER = os.path.join('app', 'static', 'uploads')
-    OUTPUT_FOLDER = 'outputs'
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'frontend', 'static', 'uploads')
+    OUTPUT_FOLDER = os.path.join(BASE_DIR, '..', 'outputs')
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB
     
     # Whisper配置
