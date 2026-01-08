@@ -37,6 +37,12 @@ class WhisperEngine:
             try:
                 self.model = whisper.load_model(self.model_size)
                 logger.info("模型加载成功")
+            except RuntimeError as e:
+                if "SHA256 checksum" in str(e):
+                    error_msg = f"模型文件校验失败，请删除缓存重试。缓存位置: {os.path.expanduser('~/.cache/whisper')}"
+                    logger.error(error_msg)
+                    raise RuntimeError(error_msg) from e
+                raise
             except Exception as e:
                 logger.error(f"加载模型失败: {str(e)}")
                 raise

@@ -149,12 +149,15 @@ function UploadPage({ onSuccess }) {
                 onChange={(e) => setModel(e.target.value)}
                 disabled={loading}
               >
-                <option value="tiny">Tiny (最快)</option>
-                <option value="base">Base (推荐)</option>
-                <option value="small">Small (较准确)</option>
-                <option value="medium">Medium (很准确)</option>
-                <option value="large">Large (最准确)</option>
+                <option value="tiny">Tiny - 最快 (~39MB)</option>
+                <option value="base">Base - 推荐 (~142MB)</option>
+                <option value="small">Small - 较准确 (~466MB)</option>
+                <option value="medium">Medium - 很准确 (~1.5GB)</option>
+                <option value="large">Large - 最准确 (~2.9GB，首次需下载)</option>
               </select>
+              <small style={{color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem'}}>
+                首次使用会自动下载模型文件
+              </small>
             </div>
 
             <div className="option-group checkbox">
