@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}上传文件 - 语音转文字系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h2 class="mb-4">📤 上传文件</h2>
+
+        <!-- 上传表单 -->
+        <div class="card shadow-sm mb-4" id="uploadCard">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="fileInput" class="form-label">选择视频或音频文件</label>
+                    <input class="form-control" type="file" id="fileInput" accept="video/*,audio/*">
+                    <div class="form-text">支持 MP4, AVI, MOV, MP3, WAV 等格式，最大 500MB</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="languageSelect" class="form-label">语言</label>
+                    <select class="form-select" id="languageSelect">
+                        <option value="zh" selected>中文</option>
+                        <option value="en">English</option>
+                        <option value="ja">日本語</option>
+                        <option value="ko">한국어</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="modelSelect" class="form-label">模型大小</label>
+                    <select class="form-select" id="modelSelect">
+                        <option value="tiny">Tiny (最快)</option>
+                        <option value="base" selected>Base (推荐)</option>
+                        <option value="small">Small (较准确)</option>
+                        <option value="medium">Medium (很准确)</option>
+                        <option value="large">Large (最准确)</option>
+                    </select>
+                    <div class="form-text">模型越大，准确度越高，但处理时间也越长</div>
+                </div>
+
+                <button type="button" class="btn btn-primary" id="uploadBtn">
+                    <span class="spinner-border spinner-border-sm d-none" id="uploadSpinner"></span>
+                    上传并开始转写
+                </button>
+            </div>
+        </div>
+
+        <!-- 进度显示 -->
+        <div class="card shadow-sm d-none" id="progressCard">
+            <div class="card-body">
+                <h5 class="card-title">处理进度</h5>
+                <div class="progress mb-2" style="height: 25px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         id="progressBar" 
+                         role="progressbar" 
+                         style="width: 0%">0%</div>
+                </div>
+                <p class="text-muted mb-0" id="progressMessage">准备中...</p>
+            </div>
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="alert alert-danger d-none" id="errorAlert">
+            <strong>错误：</strong><span id="errorMessage"></span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('uploadBtn').addEventListener('click', async function() {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showError('请选择文件');
+        return;
+    }
+
+    const language = document.getElementById('languageSelect').value;
+    const model = document.getElementById('modelSelect').value;
+
+    // 显示上传状态
+    const uploadBtn = document.getElementById('uploadBtn');
+    const spinner = document.getElementById('uploadSpinner');
+    uploadBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    try {
+        // 上传文件
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadResponse = await axios.post('/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        if (!uploadResponse.data.success) {
+            throw new Error(uploadResponse.data.error);
+        }
+
+        const taskId = uploadResponse.data.task_id;
+
+        // 隐藏上传表单，显示进度
+        document.getElementById('uploadCard').classList.add('d-none');
+        document.getElementById('progressCard').classList.remove('d-none');
+
+        // 开始转写
+        const transcribeResponse = await axios.post('/api/transcribe', {
+            task_id: taskId,
+            language: language,
+            model: model
+        });
+
+        if (!transcribeResponse.data.success) {
+            throw new Error(transcribeResponse.data.error);
+        }
+
+        // 轮询任务状态
+        pollTaskStatus(taskId);
+
+    } catch (error) {
+        showError(error.response?.data?.error || error.message);
+        uploadBtn.disabled = false;
+        spinner.classList.add('d-none');
+        document.getElementById('uploadCard').classList.remove('d-none');
+        document.getElementById('progressCard').classList.add('d-none');
+    }
+});
+
+function pollTaskStatus(taskId) {
+    const interval = setInterval(async () => {
+        try {
+            const response = await axios.get(`/api/task/${taskId}`);
+            const data = response.data;
+
+            if (!data.success) {
+                clearInterval(interval);
+                showError(data.error);
+                return;
+            }
+
+            // 更新进度
+            updateProgress(data.progress, data.message);
+
+            // 检查是否完成
+            if (data.status === 'completed') {
+                clearInterval(interval);
+                window.location.href = `/result/${taskId}`;
+            } else if (data.status === 'failed') {
+                clearInterval(interval);
+                showError(data.message);
+            }
+        } catch (error) {
+            clearInterval(interval);
+            showError('获取任务状态失败');
+        }
+    }, 2000);
+}
+
+function updateProgress(progress, message) {
+    const progressBar = document.getElementById('progressBar');
+    const progressMessage = document.getElementById('progressMessage');
+    
+    progressBar.style.width = progress + '%';
+    progressBar.textContent = progress + '%';
+    progressMessage.textContent = message;
+}
+
+function showError(message) {
+    const errorAlert = document.getElementById('errorAlert');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    errorMessage.textContent = message;
+    errorAlert.classList.remove('d-none');
+}
+</script>
+{% endblock %}

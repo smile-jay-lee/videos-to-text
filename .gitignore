@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# 环境变量
+.env
+
+# 日志
+logs/
+*.log
+
+# 上传和输出文件
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# 临时文件
+*.mp3
+*.wav
+*.mp4
+*.avi
+*_chunk_*.mp3
+*_audio.mp3
+temp_*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Whisper模型缓存
+~/.cache/whisper/
+
+# 测试
+.pytest_cache/
+.coverage
+htmlcov/
