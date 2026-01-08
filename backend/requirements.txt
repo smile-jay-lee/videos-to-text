@@ -1,28 +1,28 @@
 # Python依赖包列表
 
 # Web框架
-Flask==2.3.0
-Flask-CORS==4.0.0
-Werkzeug==2.3.0
+Flask>=2.3.0
+Flask-CORS>=4.0.0
+Werkzeug>=2.3.0
 
 # 视频/音频处理
-moviepy==1.0.3
-pydub==0.25.1
+moviepy>=1.0.3
+pydub>=0.25.1
 
 # 语音识别
-openai-whisper==20231117
-torch==2.0.1
-torchaudio==2.0.2
+openai-whisper
+torch
+torchaudio
 
 # AI API
-openai==1.3.0
-requests==2.31.0
+openai
+requests
 
 # 环境变量管理
-python-dotenv==1.0.0
+python-dotenv>=1.0.0
 
 # 工具库
-numpy==1.24.3
+numpy>=1.24.3
 
 # 可选：GPU加速（如果有NVIDIA GPU）
 # torch==2.0.1+cu118

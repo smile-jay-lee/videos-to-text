@@ -46,12 +46,11 @@ def get_logger(name: str) -> logging.Logger:
     file_handler.setFormatter(file_formatter)
     
     # 控制台handler - 简洁输出
-    console_handler = logging.Formatter()
+    console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_formatter = logging.Formatter(
         '%(levelname)s - %(message)s'
     )
-    console_handler = logging.StreamHandler()
     console_handler.setFormatter(console_formatter)
     
     logger.addHandler(file_handler)

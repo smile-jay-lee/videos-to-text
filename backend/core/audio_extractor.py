@@ -4,7 +4,10 @@
 """
 import os
 import math
-from moviepy.editor import VideoFileClip
+try:
+    from moviepy import VideoFileClip
+except ImportError:
+    from moviepy.editor import VideoFileClip
 from pydub import AudioSegment
 from typing import List, Tuple
 from utils.logger import get_logger
