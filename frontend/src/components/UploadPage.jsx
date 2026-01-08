@@ -3,7 +3,7 @@ import { uploadVideo } from '../utils/api'
 
 function UploadPage({ onSuccess }) {
   const [file, setFile] = useState(null)
-  const [model, setModel] = useState('base')
+  const [model, setModel] = useState('small')  // 改为 small，更适合中文
   const [useAI, setUseAI] = useState(false)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -149,14 +149,14 @@ function UploadPage({ onSuccess }) {
                 onChange={(e) => setModel(e.target.value)}
                 disabled={loading}
               >
-                <option value="tiny">Tiny - 最快 (~39MB)</option>
-                <option value="base">Base - 推荐 (~142MB)</option>
-                <option value="small">Small - 较准确 (~466MB)</option>
-                <option value="medium">Medium - 很准确 (~1.5GB)</option>
-                <option value="large">Large - 最准确 (~2.9GB，首次需下载)</option>
+                <option value="tiny">Tiny - 最快 (~39MB，不推荐中文)</option>
+                <option value="base">Base - 一般 (~142MB，中文效果一般)</option>
+                <option value="small">Small - 推荐 (~466MB，中文效果好) ⭐</option>
+                <option value="medium">Medium - 很好 (~1.5GB，中文高准确度) ⭐⭐</option>
+                <option value="large">Large - 最佳 (~2.9GB，专业级) ⭐⭐⭐</option>
               </select>
               <small style={{color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem'}}>
-                首次使用会自动下载模型文件
+                中文识别推荐使用 Small 或更大的模型
               </small>
             </div>
 

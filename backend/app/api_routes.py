@@ -55,8 +55,8 @@ def transcribe():
         # 创建转录服务
         transcription_service = TranscriptionService(model_size=model)
         
-        # 执行转录
-        result = transcription_service.transcribe_file(file_path)
+        # 执行转录（明确指定中文）
+        result = transcription_service.transcribe_file(file_path, language='zh')
         
         transcription_text = result.get('text', '')
         

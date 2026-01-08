@@ -64,19 +64,31 @@ class WhisperEngine:
             if self.model is None:
                 self.load_model()
             
-            logger.info(f"开始转写音频: {audio_path}")
+            logger.info(f"开始转写音频: {audio_path} (语言: {language})")
             
             # 检查文件是否存在
             if not os.path.exists(audio_path):
                 raise FileNotFoundError(f"音频文件不存在: {audio_path}")
             
+            # 准备转写参数
+            transcribe_options = {
+                'language': language,
+                'verbose': False,
+                'task': 'transcribe',  # 明确指定任务为转录（而非翻译）
+            }
+            
+            # 如果是中文，添加优化参数
+            if language == 'zh':
+                transcribe_options.update({
+                    'initial_prompt': '以下是普通话的句子。',  # 提示模型这是中文
+                    'temperature': 0.0,  # 降低随机性，提高准确度
+                })
+            
+            # 合并用户自定义参数
+            transcribe_options.update(kwargs)
+            
             # 执行转写
-            result = self.model.transcribe(
-                audio_path,
-                language=language,
-                verbose=False,
-                **kwargs
-            )
+            result = self.model.transcribe(audio_path, **transcribe_options)
             
             text = result.get("text", "")
             segments = result.get("segments", [])
