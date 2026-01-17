@@ -31,4 +31,40 @@ export const uploadVideo = async (file, model = 'base', useAI = false) => {
   }
 }
 
+export const getHistory = async () => {
+  try {
+    const response = await api.get('/history')
+    return response.data
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data.error || '获取历史记录失败')
+    }
+    throw new Error('网络错误')
+  }
+}
+
+export const getHistoryDetail = async (taskId) => {
+  try {
+    const response = await api.get(`/history/${taskId}`)
+    return response.data
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data.error || '获取详情失败')
+    }
+    throw new Error('网络错误')
+  }
+}
+
+export const deleteHistory = async (taskId) => {
+  try {
+    const response = await api.delete(`/history/${taskId}`)
+    return response.data
+  } catch (error) {
+    if (error.response) {
+      throw new Error(error.response.data.error || '删除失败')
+    }
+    throw new Error('网络错误')
+  }
+}
+
 export default api

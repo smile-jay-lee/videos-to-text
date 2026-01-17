@@ -12,9 +12,9 @@ function UploadPage({ onSuccess }) {
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
     if (selectedFile) {
-      // 检查文件大小 (500MB)
-      if (selectedFile.size > 500 * 1024 * 1024) {
-        setError('文件大小不能超过 500MB')
+      // 检查文件大小 (2GB)
+      if (selectedFile.size > 2 * 1024 * 1024 * 1024) {
+        setError('文件大小不能超过 2GB')
         return
       }
       setFile(selectedFile)
@@ -26,8 +26,8 @@ function UploadPage({ onSuccess }) {
     e.preventDefault()
     const droppedFile = e.dataTransfer.files[0]
     if (droppedFile) {
-      if (droppedFile.size > 500 * 1024 * 1024) {
-        setError('文件大小不能超过 500MB')
+      if (droppedFile.size > 2 * 1024 * 1024 * 1024) {
+        setError('文件大小不能超过 2GB')
         return
       }
       setFile(droppedFile)
@@ -64,6 +64,9 @@ function UploadPage({ onSuccess }) {
       }, 1000)
 
       const result = await uploadVideo(file, model, useAI)
+      
+      console.log('Upload successful, result:', result)
+      console.log('Calling onSuccess with result')
       
       clearInterval(progressInterval)
       setProgress(100)

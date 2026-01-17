@@ -35,13 +35,34 @@ class WhisperEngine:
         if self.model is None:
             logger.info(f"正在加载Whisper模型: {self.model_size}")
             try:
-                self.model = whisper.load_model(self.model_size)
-                logger.info("模型加载成功")
+                # 使用项目根目录下的 models 文件夹
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                download_root = os.path.join(base_dir, 'models')
+                os.makedirs(download_root, exist_ok=True)
+                
+                model_file = os.path.join(download_root, f"{self.model_size}.pt")
+                
+                # 检查文件是否存在但损坏（参考whisper源码的校验逻辑）
+                if os.path.exists(model_file):
+                    try:
+                        # 尝试简单校验：文件能否打开且大小合理
+                        file_size = os.path.getsize(model_file)
+                        if file_size < 1024 * 1024:  # 小于1MB肯定是损坏的
+                            logger.warning(f"检测到损坏的模型文件({file_size} bytes)，删除重新下载")
+                            os.remove(model_file)
+                    except Exception as check_err:
+                        logger.warning(f"检查模型文件时出错: {check_err}")
+                
+                # 加载模型（如果文件损坏，whisper会自动重新下载）
+                self.model = whisper.load_model(self.model_size, download_root=download_root)
+                logger.info(f"模型加载成功")
             except RuntimeError as e:
-                if "SHA256 checksum" in str(e):
-                    error_msg = f"模型文件校验失败，请删除缓存重试。缓存位置: {os.path.expanduser('~/.cache/whisper')}"
-                    logger.error(error_msg)
-                    raise RuntimeError(error_msg) from e
+                # 捕获SHA256校验失败的错误
+                if "SHA256 checksum does not" in str(e):
+                    logger.error(f"模型文件校验失败，尝试删除损坏文件: {model_file}")
+                    if os.path.exists(model_file):
+                        os.remove(model_file)
+                    logger.info("请重新运行程序以重新下载模型")
                 raise
             except Exception as e:
                 logger.error(f"加载模型失败: {str(e)}")
@@ -75,6 +96,11 @@ class WhisperEngine:
                 'language': language,
                 'verbose': False,
                 'task': 'transcribe',  # 明确指定任务为转录（而非翻译）
+                # 防幻觉参数（重要！）
+                'condition_on_previous_text': False,  # 不基于前文生成，避免重复
+                'compression_ratio_threshold': 2.4,   # 检测重复内容
+                'logprob_threshold': -1.0,            # 质量阈值
+                'no_speech_threshold': 0.6,           # 静音检测阈值
             }
             
             # 如果是中文，添加优化参数

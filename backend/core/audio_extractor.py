@@ -107,11 +107,17 @@ class AudioExtractor:
                 chunk = audio[start_ms:end_ms]
                 
                 chunk_path = f"{base_name}_chunk_{i}.mp3"
-                chunk.export(chunk_path, format="mp3")
+                # 导出时明确指定参数，确保音轨正确保存
+                chunk.export(
+                    chunk_path,
+                    format="mp3",
+                    bitrate="192k",  # 指定比特率
+                    parameters=["-ac", "2"]  # 确保双声道（或保持原声道）
+                )
                 chunks.append(chunk_path)
                 self.temp_files.append(chunk_path)
                 
-                logger.info(f"已创建音频片段 {i+1}/{num_chunks}: {chunk_path}")
+                logger.info(f"已创建音频片段 {i+1}/{num_chunks}: {chunk_path} ({len(chunk)/1000:.1f}s)")
             
             return chunks
             

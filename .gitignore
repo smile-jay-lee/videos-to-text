@@ -45,9 +45,13 @@ temp_*
 Thumbs.db
 
 # Whisper模型缓存
-~/.cache/whisper/
+models/*.pt
+
 
 # 测试
 .pytest_cache/
 .coverage
 htmlcov/
+
+
+

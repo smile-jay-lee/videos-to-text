@@ -18,7 +18,7 @@ class Config:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'frontend', 'static', 'uploads')
     OUTPUT_FOLDER = os.path.join(BASE_DIR, '..', 'outputs')
-    MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB
+    MAX_CONTENT_LENGTH = 2 * 1024 * 1024 * 1024  # 2GB
     
     # Whisper配置
     WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'base')

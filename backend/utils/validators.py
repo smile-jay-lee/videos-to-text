@@ -10,8 +10,8 @@ ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv'}
 ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg'}
 ALLOWED_EXTENSIONS = ALLOWED_VIDEO_EXTENSIONS | ALLOWED_AUDIO_EXTENSIONS
 
-# 最大文件大小 (500MB)
-MAX_FILE_SIZE = 500 * 1024 * 1024
+# 最大文件大小 (2GB)
+MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024
 
 
 def allowed_file(filename: str) -> bool:
@@ -71,8 +71,37 @@ def validate_file(file, max_size: int = MAX_FILE_SIZE) -> Tuple[bool, str]:
 
 
 def get_secure_filename(filename: str) -> str:
-    """获取安全的文件名"""
-    return secure_filename(filename)
+    """
+    获取安全的文件名，保留中文字符
+    
+    Werkzeug的secure_filename会删除中文，所以我们自己处理：
+    1. 保留中文、英文、数字、下划线、短横线、点号
+    2. 替换其他特殊字符为下划线
+    3. 如果处理后为空，使用UUID
+    """
+    import re
+    import uuid
+    
+    # 提取文件名和扩展名
+    name, ext = os.path.splitext(filename)
+    
+    # 保留中文、英文、数字、下划线、短横线
+    # \u4e00-\u9fff 是中文Unicode范围
+    safe_name = re.sub(r'[^\w\u4e00-\u9fff\-]', '_', name)
+    
+    # 移除开头结尾的特殊字符
+    safe_name = safe_name.strip('_-')
+    
+    # 如果处理后为空或过短，使用时间戳
+    if not safe_name or len(safe_name) < 2:
+        from datetime import datetime
+        safe_name = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # 限制文件名长度（Windows最大255字节）
+    if len(safe_name.encode('utf-8')) > 200:
+        safe_name = safe_name[:50]  # 保留前50个字符
+    
+    return f"{safe_name}{ext}"
 
 
 def validate_language_code(lang_code: str) -> bool:

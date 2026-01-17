@@ -3,6 +3,8 @@ Flask路由定义 - API for React Frontend
 """
 import os
 import uuid
+import json
+from datetime import datetime
 from flask import Blueprint, request, jsonify, send_file, current_app
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -21,6 +23,34 @@ CORS(api_bp)
 
 # 全局任务存储（生产环境应使用Redis等）
 tasks = {}
+
+
+def save_task_metadata(task_id, data):
+    """保存任务元数据"""
+    try:
+        output_dir = os.path.join(current_app.config['OUTPUT_FOLDER'], task_id)
+        ensure_dir(output_dir)
+        
+        metadata_path = os.path.join(output_dir, 'metadata.json')
+        with open(metadata_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"保存元数据失败: {str(e)}")
+
+
+def load_task_metadata(task_id):
+    """加载任务元数据"""
+    try:
+        output_dir = os.path.join(current_app.config['OUTPUT_FOLDER'], task_id)
+        metadata_path = os.path.join(output_dir, 'metadata.json')
+        
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"加载元数据失败: {str(e)}")
+    
+    return None
 
 
 @api_bp.route('/transcribe', methods=['POST'])
@@ -67,6 +97,19 @@ def transcribe():
         txt_path = os.path.join(output_dir, f'{filename}_transcription.txt')
         with open(txt_path, 'w', encoding='utf-8') as f:
             f.write(transcription_text)
+        
+        # 保存元数据
+        metadata = {
+            'task_id': task_id,
+            'filename': filename,
+            'model': model,
+            'duration': result.get('duration'),
+            'created_at': datetime.now().isoformat(),
+            'file_size': os.path.getsize(txt_path),
+            'text_length': len(transcription_text),
+            'use_ai': use_ai
+        }
+        save_task_metadata(task_id, metadata)
         
         response_data = {
             'success': True,
@@ -148,3 +191,125 @@ def health():
         'status': 'healthy',
         'service': 'videos-to-text-api'
     })
+
+@api_bp.route('/history')
+def get_history():
+    """获取历史记录列表"""
+    try:
+        output_folder = current_app.config['OUTPUT_FOLDER']
+        history = []
+        
+        # 遍历输出目录
+        if os.path.exists(output_folder):
+            for task_id in os.listdir(output_folder):
+                task_dir = os.path.join(output_folder, task_id)
+                
+                # 跳过非目录文件
+                if not os.path.isdir(task_dir):
+                    continue
+                
+                # 加载元数据
+                metadata = load_task_metadata(task_id)
+                
+                if metadata:
+                    history.append(metadata)
+                else:
+                    # 如果没有元数据，尝试从文件系统推断
+                    files = [f for f in os.listdir(task_dir) if f.endswith('.txt')]
+                    if files:
+                        main_file = files[0]
+                        file_path = os.path.join(task_dir, main_file)
+                        stat = os.stat(file_path)
+                        
+                        history.append({
+                            'task_id': task_id,
+                            'filename': main_file.replace('_transcription.txt', ''),
+                            'created_at': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                            'file_size': stat.st_size,
+                            'model': 'unknown'
+                        })
+        
+        # 按时间倒序排序
+        history.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'history': history,
+            'total': len(history)
+        })
+        
+    except Exception as e:
+        logger.error(f"获取历史记录失败: {str(e)}")
+        return jsonify({'error': '获取历史记录失败'}), 500
+
+
+@api_bp.route('/history/<task_id>')
+def get_history_detail(task_id):
+    """获取历史记录详情"""
+    try:
+        output_dir = os.path.join(current_app.config['OUTPUT_FOLDER'], task_id)
+        
+        if not os.path.exists(output_dir):
+            return jsonify({'error': '记录不存在'}), 404
+        
+        # 加载元数据
+        metadata = load_task_metadata(task_id)
+        
+        # 读取转录文本
+        transcription = None
+        polished_text = None
+        summary = None
+        
+        for filename in os.listdir(output_dir):
+            file_path = os.path.join(output_dir, filename)
+            
+            if filename.endswith('_transcription.txt'):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    transcription = f.read()
+            elif filename.endswith('_polished.txt'):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    polished_text = f.read()
+            elif filename.endswith('_summary.txt'):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    summary = f.read()
+        
+        result = {
+            'success': True,
+            'task_id': task_id,
+            'metadata': metadata,
+            'transcription': transcription,
+            'polished_text': polished_text,
+            'summary': summary
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"获取详情失败: {str(e)}")
+        return jsonify({'error': '获取详情失败'}), 500
+
+
+@api_bp.route('/history/<task_id>', methods=['DELETE'])
+def delete_history(task_id):
+    """删除历史记录"""
+    try:
+        import shutil
+        
+        output_dir = os.path.join(current_app.config['OUTPUT_FOLDER'], task_id)
+        
+        if not os.path.exists(output_dir):
+            return jsonify({'error': '记录不存在'}), 404
+        
+        # 删除目录及所有文件
+        shutil.rmtree(output_dir)
+        
+        logger.info(f"已删除历史记录: {task_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': '删除成功'
+        })
+        
+    except Exception as e:
+        logger.error(f"删除失败: {str(e)}")
+        return jsonify({'error': '删除失败'}), 500

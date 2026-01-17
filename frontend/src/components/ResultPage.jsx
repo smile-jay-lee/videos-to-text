@@ -3,6 +3,10 @@ import { useState } from 'react'
 function ResultPage({ result, onBack }) {
   const [activeTab, setActiveTab] = useState('transcription')
 
+  // 调试：打印result数据
+  console.log('ResultPage received result:', result)
+  console.log('Transcription length:', result?.transcription?.length)
+
   const handleDownload = (content, filename) => {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
