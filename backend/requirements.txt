@@ -17,12 +17,13 @@ torchaudio
 # AI API
 openai
 requests
+google-genai>=1.0.0
 
 # 环境变量管理
 python-dotenv>=1.0.0
 
 # 工具库
-numpy>=1.24.3
+numpy>=1.24.3,<2.0  # 限制版本以兼容 Whisper 的 numba 依赖
 
 # 可选：GPU加速（如果有NVIDIA GPU）
 # torch==2.0.1+cu118

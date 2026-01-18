@@ -27,6 +27,7 @@ class Config:
     # AI配置
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
     DEFAULT_AI_PROVIDER = os.getenv('DEFAULT_AI_PROVIDER', 'openai')
     
     # 应用配置

@@ -9,6 +9,7 @@ from flask import Blueprint, request, jsonify, send_file, current_app
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from services import TranscriptionService, TextService
+from services.gemini_service import get_gemini_service
 from utils.validators import validate_file, get_secure_filename
 from utils.file_handler import ensure_dir, cleanup_file
 from utils.logger import get_logger
@@ -124,25 +125,21 @@ def transcribe():
         # AI处理
         if use_ai and transcription_text:
             try:
-                text_service = TextService()
+                # 使用 Gemini 优化转录文案
+                gemini_service = get_gemini_service()
+                gemini_result = gemini_service.polish_transcription(transcription_text)
                 
-                # AI润色
-                polished_text = text_service.polish_text(transcription_text)
-                if polished_text:
+                if gemini_result.get('success'):
+                    polished_text = gemini_result['polished_text']
                     polished_path = os.path.join(output_dir, f'{filename}_polished.txt')
                     with open(polished_path, 'w', encoding='utf-8') as f:
                         f.write(polished_text)
                     response_data['polished_text'] = polished_text
                     response_data['output_files'].append(f'{filename}_polished.txt')
-                
-                # AI摘要
-                summary = text_service.summarize_text(transcription_text)
-                if summary:
-                    summary_path = os.path.join(output_dir, f'{filename}_summary.txt')
-                    with open(summary_path, 'w', encoding='utf-8') as f:
-                        f.write(summary)
-                    response_data['summary'] = summary
-                    response_data['output_files'].append(f'{filename}_summary.txt')
+                    logger.info(f"Gemini 优化完成: {len(transcription_text)} -> {len(polished_text)} chars")
+                else:
+                    logger.warning(f"Gemini 优化失败: {gemini_result.get('error', 'Unknown error')}")
+                    response_data['ai_warning'] = f"Gemini 优化失败: {gemini_result.get('error', 'Unknown error')}"
                     
             except Exception as ai_error:
                 logger.warning(f"AI处理失败: {str(ai_error)}")
