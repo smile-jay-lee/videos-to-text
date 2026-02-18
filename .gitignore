@@ -53,5 +53,8 @@ models/*.pt
 .coverage
 htmlcov/
 
+#bilitools
+bilitools
 
-
+#下载
+downloads
