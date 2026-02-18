@@ -1,8 +1,12 @@
 # Python
+
+# 编译缓存与中间文件
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# 虚拟环境与依赖产物
 .Python
 env/
 venv/
@@ -11,12 +15,18 @@ ENV/
 dist/
 build/
 
+# 环境变量文件（通常包含敏感信息）
+
 # 环境变量
 .env
+
+# 上传目录与输出目录（保留 .gitkeep）
 
 # 日志
 logs/
 *.log
+
+# 临时媒体文件（避免将大文件误提交）
 
 # 上传和输出文件
 app/static/uploads/*
@@ -24,20 +34,38 @@ app/static/uploads/*
 outputs/*
 !outputs/.gitkeep
 
+
+# 编辑器与 IDE 配置
 # 临时文件
 *.mp3
 *.wav
 *.mp4
 *.avi
+
+# 操作系统临时文件
 *_chunk_*.mp3
 *_audio.mp3
+
+# 模型/大二进制文件（如 Whisper 模型）
 temp_*
+
+# 测试运行产生的缓存/报告
 
 # IDE
 .vscode/
+
+# 本地工具目录或第三方仓库（若不需要纳入版本控制）
 .idea/
 *.swp
+
+# 测试脚本目录（如果这些是自动生成的或仅用于本地手动测试）
 *.swo
+
+### 说明：
+# 1) 本文件使用中文注释以便团队成员阅读和维护；
+# 2) 如需保留某些输出目录内的文件，请在对应目录下添加 ".gitkeep" 并在此处使用反向否定规则放行；
+# 3) 若某些条目与 CI/CD 配置冲突，请根据 CI 要求做局部调整。
+
 *~
 
 # 系统文件
@@ -58,3 +86,6 @@ bilitools
 
 #下载
 downloads
+
+#测试
+tests
