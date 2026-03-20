@@ -310,3 +310,134 @@ def delete_history(task_id):
     except Exception as e:
         logger.error(f"删除失败: {str(e)}")
         return jsonify({'error': '删除失败'}), 500
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Bilibili 相关接口
+# ─────────────────────────────────────────────────────────────────────────────
+
+@api_bp.route('/bili/info')
+def get_bili_info():
+    """获取 B 站视频元数据（仅解析，不下载）"""
+    url = request.args.get('url', '').strip()
+    if not url:
+        return jsonify({'error': '缺少 url 参数'}), 400
+
+    try:
+        from services.bili_service import BiliAudioService
+        service = BiliAudioService()
+        info = service.get_video_info(url)
+
+        if info is None:
+            return jsonify({'error': '无法解析链接，请检查 BV 号或链接是否正确，以及视频是否公开'}), 400
+
+        return jsonify({'success': True, **info})
+
+    except Exception as e:
+        logger.error(f"获取B站视频信息失败: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/transcribe-url', methods=['POST'])
+def transcribe_url():
+    """通过 B 站链接下载音频并转录"""
+    import shutil
+
+    try:
+        data = request.get_json(silent=True) or {}
+        url      = data.get('url', '').strip()
+        model    = data.get('model', current_app.config.get('WHISPER_MODEL', 'base'))
+        use_ai   = bool(data.get('use_ai', False))
+        page_num = data.get('page_num', None)   # None → 第 1 P
+
+        if not url:
+            return jsonify({'error': '缺少 url 参数'}), 400
+
+        task_id  = str(uuid.uuid4())
+        temp_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], task_id)
+        ensure_dir(temp_dir)
+
+        audio_path = None
+        try:
+            # 1. 下载音频到临时目录
+            from services.bili_service import BiliAudioService
+            bili = BiliAudioService(output_dir=temp_dir)
+            audio_path = bili.download_audio(url, page_num=page_num)
+
+            if not audio_path:
+                return jsonify({'error': '音频下载失败，视频可能不存在、已删除或需要登录'}), 400
+
+            display_name = os.path.splitext(os.path.basename(audio_path))[0]
+
+            # 2. 转录
+            transcription_service = TranscriptionService(model_size=model)
+            result = transcription_service.transcribe_file(audio_path, language='zh')
+            transcription_text = result.get('text', '')
+
+            # 3. 持久化结果
+            output_dir = os.path.join(current_app.config['OUTPUT_FOLDER'], task_id)
+            ensure_dir(output_dir)
+
+            txt_path = os.path.join(output_dir, f'{display_name}_transcription.txt')
+            with open(txt_path, 'w', encoding='utf-8') as f:
+                f.write(transcription_text)
+
+            metadata = {
+                'task_id':     task_id,
+                'filename':    display_name,
+                'source_type': 'bili_url',
+                'source_url':  url,
+                'model':       model,
+                'duration':    result.get('duration'),
+                'created_at':  datetime.now().isoformat(),
+                'file_size':   os.path.getsize(txt_path),
+                'text_length': len(transcription_text),
+                'use_ai':      use_ai,
+            }
+            save_task_metadata(task_id, metadata)
+
+            response_data = {
+                'success':       True,
+                'task_id':       task_id,
+                'filename':      display_name,
+                'transcription': transcription_text,
+                'model':         model,
+                'duration':      result.get('duration'),
+                'output_files':  [os.path.basename(txt_path)],
+            }
+
+            # 4. AI 润色（可选）
+            if use_ai and transcription_text:
+                try:
+                    gemini_service = get_gemini_service()
+                    gemini_result = gemini_service.polish_transcription(transcription_text)
+                    if gemini_result.get('success'):
+                        polished_text = gemini_result['polished_text']
+                        polished_path = os.path.join(output_dir, f'{display_name}_polished.txt')
+                        with open(polished_path, 'w', encoding='utf-8') as f:
+                            f.write(polished_text)
+                        response_data['polished_text'] = polished_text
+                        response_data['output_files'].append(os.path.basename(polished_path))
+                except Exception as ai_err:
+                    logger.warning(f"AI处理失败: {ai_err}")
+                    response_data['ai_warning'] = f'AI处理失败: {ai_err}'
+
+            logger.info(f"URL转录完成: {task_id}")
+            return jsonify(response_data)
+
+        finally:
+            # 5. 清理临时音频和上传目录（无论成功与否）
+            if audio_path and os.path.exists(audio_path):
+                try:
+                    os.remove(audio_path)
+                    logger.info(f"已清理临时音频: {audio_path}")
+                except Exception:
+                    pass
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception:
+                pass
+
+    except Exception as e:
+        logger.error(f"URL转录失败: {str(e)}", exc_info=True)
+        return jsonify({'error': f'处理失败: {str(e)}'}), 500

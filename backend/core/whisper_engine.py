@@ -2,12 +2,13 @@
 核心功能模块 - Whisper引擎
 负责语音识别转写功能
 """
-import whisper
 import os
 from typing import List, Dict
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# 注意：whisper 在 load_model() 内延迟导入，避免 numba/numpy 版本冲突影响应用启动
 
 
 class WhisperEngine:
@@ -33,6 +34,7 @@ class WhisperEngine:
     def load_model(self):
         """加载Whisper模型"""
         if self.model is None:
+            import whisper  # 延迟导入：避免 numba/numpy 版本冲突在应用启动时报错
             logger.info(f"正在加载Whisper模型: {self.model_size}")
             try:
                 # 使用项目根目录下的 models 文件夹

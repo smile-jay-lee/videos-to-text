@@ -33,6 +33,7 @@ app/static/uploads/*
 !app/static/uploads/.gitkeep
 outputs/*
 !outputs/.gitkeep
+frontend/static/uploads/*
 
 
 # 编辑器与 IDE 配置
