@@ -1,0 +1,20 @@
+services:
+  # 语音转文字后端
+  v2t-backend:
+    build: ./backend
+    restart: always
+    volumes:
+      - ./outputs:/app/outputs
+    environment:
+      - WHISPER_MODEL=tiny  # 内存有限，先用最省钱的 tiny 模型
+    ports:
+      - "5000:5000"
+
+  # 前端界面
+  v2t-frontend:
+    build: ./frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - v2t-backend
