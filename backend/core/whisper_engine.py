@@ -56,7 +56,7 @@ class WhisperEngine:
                         logger.warning(f"检查模型文件时出错: {check_err}")
                 
                 # 加载模型（如果文件损坏，whisper会自动重新下载）
-                self.model = whisper.load_model(self.model_size, download_root=download_root)
+                self.model = whisper.load_model(self.model_size, download_root=download_root,device="cpu")
                 logger.info(f"模型加载成功")
             except RuntimeError as e:
                 # 捕获SHA256校验失败的错误
@@ -96,6 +96,7 @@ class WhisperEngine:
             # 准备转写参数
             transcribe_options = {
                 'language': language,
+                'fp16': False,         #关闭 fp16（半精度浮点数）加速
                 'verbose': False,
                 'task': 'transcribe',  # 明确指定任务为转录（而非翻译）
                 # 防幻觉参数（重要！）
