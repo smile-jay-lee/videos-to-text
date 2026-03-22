@@ -12,7 +12,7 @@ env/
 venv/
 ENV/
 *.egg-info/
-dist/
+# dist/
 build/
 
 # 环境变量文件（通常包含敏感信息）
