@@ -33,26 +33,26 @@ function fmtDuration(seconds) {
 
 function ProgressSteps({ steps, stepIdx, phase }) {
   return (
-    <div className="flex items-center flex-wrap gap-y-2">
+    <div className="flex items-center flex-wrap gap-y-3">
       {steps.map((step, idx) => {
         const done   = phase === 'done' || idx < stepIdx
         const active = phase === 'processing' && idx === stepIdx
         return (
           <div key={step} className="flex items-center">
-            <div className={`flex items-center gap-1.5 text-xs font-medium ${
-              done   ? 'text-green-600' :
+            <div className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+              done   ? 'text-emerald-600' :
               active ? 'text-indigo-600' :
-                       'text-gray-400'
+                       'text-slate-400'
             }`}>
-              <span className={`inline-block w-1.5 h-1.5 rounded-full ${
-                done   ? 'bg-green-500' :
+              <span className={`inline-block w-2 h-2 rounded-full transition-colors ${
+                done   ? 'bg-emerald-500' :
                 active ? 'bg-indigo-500 animate-pulse' :
-                         'bg-gray-300'
+                         'bg-slate-300'
               }`} />
               {STEP_LABELS[step] ?? step}
             </div>
             {idx < steps.length - 1 && (
-              <span className={`mx-3 text-xs ${done ? 'text-green-400' : 'text-gray-300'}`}>→</span>
+              <span className={`mx-3 text-sm ${done ? 'text-emerald-400' : 'text-slate-300'}`}>→</span>
             )}
           </div>
         )
@@ -125,88 +125,94 @@ function UploadPage({ onSuccess }) {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white border border-gray-200 rounded">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
 
         {/* ─ Tab 切换 ─ */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-slate-200 bg-slate-50/50">
           {[['url', '链接提取 (B 站)'], ['file', '本地文件']].map(([key, label]) => (
             <button
               key={key}
               onClick={() => handleSwitchMode(key)}
               disabled={isProcessing}
               className={[
-                'px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                'flex-1 py-4 text-sm font-medium transition-colors relative',
                 mode === key
-                  ? 'border-indigo-500 text-indigo-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                  ? 'text-indigo-600 bg-white'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50',
                 'disabled:pointer-events-none disabled:opacity-50',
               ].join(' ')}
             >
               {label}
+              {mode === key && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />
+              )}
             </button>
           ))}
         </div>
 
-        <div className="p-5">
+        <div className="p-6 sm:p-8">
 
           {/* ═══ URL 模式 ═══ */}
           {mode === 'url' && (
-            <div className="space-y-3">
-
-              {/* 输入行 */}
-              <div className="flex gap-2">
-                <input
-                  value={bili.url}
-                  onChange={e => bili.setUrl(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && bili.parseUrl()}
-                  placeholder="BV1xx411c7XD · 完整链接 · 分享文本 均可"
-                  disabled={isProcessing}
-                  spellCheck={false}
-                  className="flex-1 font-mono text-sm border border-gray-300 px-3 py-2 rounded focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 disabled:bg-gray-50 disabled:text-gray-400"
-                />
-                <button
-                  onClick={bili.parseUrl}
-                  disabled={!bili.url.trim() || bili.isParsing || isProcessing}
-                  className="px-4 py-2 text-sm bg-gray-800 text-white rounded hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {bili.isParsing ? '解析中…' : '解析'}
-                </button>
+            <div className="space-y-4">
+              
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700 block">视频链接</label>
+                {/* 输入行 */}
+                <div className="flex gap-3">
+                  <input
+                    value={bili.url}
+                    onChange={e => bili.setUrl(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && bili.parseUrl()}
+                    placeholder="BV1xx411c7XD · 完整链接 · 分享文本 均可"
+                    disabled={isProcessing}
+                    spellCheck={false}
+                    className="flex-1 font-mono text-sm border border-slate-300 px-4 py-2.5 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:bg-slate-50 disabled:text-slate-400 transition-all"
+                  />
+                  <button
+                    onClick={bili.parseUrl}
+                    disabled={!bili.url.trim() || bili.isParsing || isProcessing}
+                    className="px-6 py-2.5 text-sm font-medium bg-slate-900 text-white rounded-xl hover:bg-slate-800 active:scale-95 disabled:opacity-50 disabled:active:scale-100 transition-all shadow-sm"
+                  >
+                    {bili.isParsing ? '解析中…' : '解析'}
+                  </button>
+                </div>
               </div>
 
               {/* 解析错误 */}
               {bili.parseError && (
-                <p className="text-xs text-red-600 border border-red-200 bg-red-50 px-3 py-2 rounded">
-                  ✗ {bili.parseError}
+                <p className="text-sm text-red-600 border border-red-200 bg-red-50 px-4 py-3 rounded-xl">
+                  {bili.parseError}
                 </p>
               )}
 
               {/* 预览卡片 */}
               {bili.preview && (
-                <div className="border border-gray-200 rounded overflow-hidden">
-                  <dl className="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1.5 text-sm p-4 bg-gray-50">
-                    <dt className="text-gray-400">标题</dt>
-                    <dd className="font-medium text-gray-900 break-words">{bili.preview.title}</dd>
-                    <dt className="text-gray-400">UP主</dt>
-                    <dd className="text-gray-700">{bili.preview.owner}</dd>
-                    <dt className="text-gray-400">时长</dt>
-                    <dd className="text-gray-700 font-mono">{fmtDuration(bili.preview.duration)}</dd>
+                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                  <dl className="grid grid-cols-[5rem_1fr] gap-x-4 gap-y-2 text-sm p-5 bg-slate-50/50">
+                    <dt className="text-slate-500 font-medium">标题</dt>
+                    <dd className="font-medium text-slate-900 break-words">{bili.preview.title}</dd>
+                    <dt className="text-slate-500 font-medium">UP主</dt>
+                    <dd className="text-slate-700">{bili.preview.owner}</dd>
+                    <dt className="text-slate-500 font-medium">时长</dt>
+                    <dd className="text-slate-700 font-mono">{fmtDuration(bili.preview.duration)}</dd>
                     {bili.preview.pages.length > 1 && (
                       <>
-                        <dt className="text-gray-400">分P 数</dt>
-                        <dd className="text-gray-700">{bili.preview.pages.length} P</dd>
+                        <dt className="text-slate-500 font-medium">分P 数</dt>
+                        <dd className="text-slate-700">{bili.preview.pages.length} P</dd>
                       </>
                     )}
                   </dl>
 
                   {/* 分P 选择（仅多P视频） */}
                   {bili.preview.pages.length > 1 && (
-                    <div className="border-t border-gray-200 px-4 py-2.5 bg-white flex items-center gap-3">
-                      <span className="text-xs text-gray-500 flex-shrink-0">下载分P</span>
+                    <div className="border-t border-slate-200 px-5 py-3.5 bg-white flex items-center gap-4">
+                      <span className="text-sm font-medium text-slate-700 flex-shrink-0">下载分P</span>
                       <select
                         value={pageNum ?? 1}
                         onChange={e => setPageNum(Number(e.target.value))}
                         disabled={isProcessing}
-                        className="flex-1 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-indigo-500 max-w-sm"
+                        className="flex-1 text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 max-w-sm transition-all"
                       >
                         {bili.preview.pages.map(p => (
                           <option key={p.page} value={p.page}>
@@ -218,12 +224,12 @@ function UploadPage({ onSuccess }) {
                   )}
 
                   {/* 确认行 */}
-                  <div className="border-t border-gray-200 px-4 py-2.5 bg-white flex items-center justify-between">
-                    <span className="text-xs text-gray-400 font-mono">{bili.preview.bvid}</span>
+                  <div className="border-t border-slate-200 px-5 py-4 bg-white flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-mono bg-slate-100 px-2 py-1 rounded">{bili.preview.bvid}</span>
                     <button
                       onClick={handleUrlSubmit}
                       disabled={isProcessing}
-                      className="text-sm bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 disabled:opacity-40 transition-colors"
+                      className="text-sm font-medium bg-indigo-600 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700 active:scale-95 disabled:opacity-50 disabled:active:scale-100 transition-all shadow-sm"
                     >
                       开始转录
                     </button>
@@ -243,15 +249,15 @@ function UploadPage({ onSuccess }) {
                   onDragLeave={() => setDragOver(false)}
                   onClick={() => fileInputRef.current?.click()}
                   className={[
-                    'border-2 border-dashed rounded p-10 text-center cursor-pointer transition-colors select-none',
+                    'border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all select-none',
                     dragOver
-                      ? 'border-indigo-400 bg-indigo-50'
-                      : 'border-gray-300 hover:border-gray-400 bg-gray-50',
+                      ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]'
+                      : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50',
                   ].join(' ')}
                 >
-                  <div className="text-4xl mb-3">📁</div>
-                  <p className="text-sm text-gray-600">拖拽文件到这里，或点击选择</p>
-                  <p className="text-xs text-gray-400 mt-1">MP4 / AVI / MOV / MKV / MP3 / WAV / M4A 等</p>
+                  <div className="text-5xl mb-4 opacity-80">📁</div>
+                  <p className="text-base font-medium text-slate-700">拖拽文件到这里，或点击选择</p>
+                  <p className="text-sm text-slate-500 mt-2">支持 MP4, AVI, MP3, WAV, M4A 等格式</p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -261,27 +267,32 @@ function UploadPage({ onSuccess }) {
                   />
                 </div>
               ) : (
-                <div className="border border-gray-200 rounded px-4 py-3 flex items-center justify-between bg-gray-50">
-                  <div className="min-w-0">
-                    <p className="text-sm font-mono font-medium truncate">{file.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                <div className="border border-slate-200 rounded-xl p-5 flex items-center justify-between bg-white shadow-sm">
+                  <div className="min-w-0 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl">
+                      📄
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+                      <p className="text-xs text-slate-500 mt-1">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                    <button
-                      onClick={handleFileSubmit}
-                      disabled={isProcessing}
-                      className="text-sm bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 disabled:opacity-40 transition-colors"
-                    >
-                      开始转录
-                    </button>
+                  <div className="flex items-center gap-4 flex-shrink-0 ml-4">
                     {!isProcessing && (
                       <button
                         onClick={() => setFile(null)}
-                        className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                        className="text-sm font-medium text-slate-500 hover:text-red-600 transition-colors"
                       >
                         移除
                       </button>
                     )}
+                    <button
+                      onClick={handleFileSubmit}
+                      disabled={isProcessing}
+                      className="text-sm font-medium bg-indigo-600 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700 active:scale-95 disabled:opacity-50 disabled:active:scale-100 transition-all shadow-sm"
+                    >
+                      开始转录
+                    </button>
                   </div>
                 </div>
               )}
@@ -291,54 +302,59 @@ function UploadPage({ onSuccess }) {
 
         {/* ─ 共享配置（处理中时隐藏） ─ */}
         {!isProcessing && (
-          <div className="border-t border-gray-100 px-5 py-3 bg-gray-50 flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-500 font-medium">模型</span>
-              <div className="flex border border-gray-300 rounded overflow-hidden text-xs">
+          <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex flex-wrap items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-slate-700">模型选择</span>
+              <div className="flex bg-slate-200/50 p-1 rounded-lg">
                 {MODEL_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => setModel(opt.value)}
                     className={[
-                      'px-3 py-1.5 transition-colors',
+                      'px-4 py-1.5 text-sm font-medium rounded-md transition-all',
                       model === opt.value
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-100',
+                        ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200'
+                        : 'text-slate-600 hover:text-slate-900',
                     ].join(' ')}
                   >
                     {opt.label}
-                    <span className="ml-1 opacity-60 font-normal">{opt.note}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={useAI}
-                onChange={e => setUseAI(e.target.checked)}
-                className="w-3.5 h-3.5"
-              />
-              <span className="text-xs text-gray-600">AI 总结润色</span>
+            <label className="flex items-center gap-2 cursor-pointer select-none group">
+              <div className="relative flex items-center">
+                <input
+                  type="checkbox"
+                  checked={useAI}
+                  onChange={e => setUseAI(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="w-10 h-5.5 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </div>
+              <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">AI 总结润色</span>
             </label>
           </div>
         )}
 
         {/* ─ 进度步骤（处理中显示） ─ */}
         {isProcessing && (
-          <div className="border-t border-gray-100 px-5 py-3 bg-indigo-50">
+          <div className="border-t border-indigo-100 px-6 py-5 bg-indigo-50/50">
             <ProgressSteps steps={tx.steps} stepIdx={tx.stepIdx} phase={tx.phase} />
           </div>
         )}
 
         {/* ─ 错误行 ─ */}
         {tx.phase === 'error' && (
-          <div className="border-t border-red-100 px-5 py-3 bg-red-50 flex items-center justify-between">
-            <span className="text-xs text-red-600">✗ {tx.error}</span>
+          <div className="border-t border-red-100 px-6 py-4 bg-red-50 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-red-600">
+              <span className="text-lg">⚠️</span>
+              <span className="text-sm font-medium">{tx.error}</span>
+            </div>
             <button
               onClick={tx.reset}
-              className="text-xs text-indigo-600 hover:underline ml-4"
+              className="text-sm font-medium text-red-700 hover:text-red-800 hover:underline ml-4"
             >
               重试
             </button>
