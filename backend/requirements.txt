@@ -5,19 +5,18 @@ Flask>=2.3.0
 Flask-CORS>=4.0.0
 Werkzeug>=2.3.0
 
-# 视频/音频处理
-moviepy>=1.0.3
-pydub>=0.25.1
+# 命令行媒体处理（系统依赖，非pip）：ffmpeg / ffprobe
 
 # 语音识别
 openai-whisper
-torch
+# torch
 torchaudio
 
 # AI API
 openai
 requests
 google-genai>=1.0.0
+tqdm>=4.66.0
 
 # 环境变量管理
 python-dotenv>=1.0.0
