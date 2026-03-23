@@ -3,13 +3,10 @@
 负责从视频中提取音频，转换格式，分割大文件
 """
 import os
-import math
-try:
-    from moviepy import VideoFileClip
-except ImportError:
-    from moviepy.editor import VideoFileClip
-from pydub import AudioSegment
-from typing import List, Tuple
+import json
+import glob
+import subprocess
+from typing import List
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -18,8 +15,21 @@ logger = get_logger(__name__)
 class AudioExtractor:
     """音频提取和处理核心类"""
     
-    def __init__(self):
+    def __init__(self, mode: str = "local"):
         self.temp_files = []
+        normalized_mode = (mode or "local").lower()
+        self.mode = normalized_mode if normalized_mode in ("local", "server") else "local"
+
+    def _threads_param(self) -> List[str]:
+        return ['-threads', '1'] if self.mode == 'server' else []
+
+    def _run_ffmpeg(self, args: List[str], error_message: str):
+        command = ['ffmpeg', '-y', *args]
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"{error_message}: {e.stderr or str(e)}")
+            raise
     
     def extract_from_video(self, video_path: str, output_path: str = None) -> str:
         """
@@ -38,14 +48,14 @@ class AudioExtractor:
                 output_path = f"{base_name}_audio.mp3"
             
             logger.info(f"正在从视频提取音频: {video_path}")
-            video = VideoFileClip(video_path)
-            audio = video.audio
-            
-            if audio is None:
-                raise ValueError("视频中没有音频轨道")
-            
-            audio.write_audiofile(output_path, logger=None)
-            video.close()
+            self._run_ffmpeg([
+                '-i', video_path,
+                '-vn',
+                '-acodec', 'libmp3lame',
+                '-q:a', '2',
+                *self._threads_param(),
+                output_path
+            ], "提取音频失败")
             
             logger.info(f"音频已提取: {output_path}")
             return output_path
@@ -70,8 +80,11 @@ class AudioExtractor:
             output_path = f"{base_name}.{output_format}"
             
             logger.info(f"正在转换音频格式: {input_path} -> {output_format}")
-            audio = AudioSegment.from_file(input_path)
-            audio.export(output_path, format=output_format)
+            self._run_ffmpeg([
+                '-i', input_path,
+                *self._threads_param(),
+                output_path
+            ], "转换音频格式失败")
             
             logger.info(f"格式转换完成: {output_path}")
             return output_path
@@ -93,32 +106,24 @@ class AudioExtractor:
         """
         try:
             logger.info(f"正在分割音频: {audio_path}")
-            audio = AudioSegment.from_file(audio_path)
-            chunks = []
-            
-            num_chunks = math.ceil(len(audio) / chunk_duration_ms)
-            logger.info(f"将分割为 {num_chunks} 段")
-            
             base_name = os.path.splitext(audio_path)[0]
-            
-            for i in range(num_chunks):
-                start_ms = i * chunk_duration_ms
-                end_ms = min((i+1) * chunk_duration_ms, len(audio))
-                chunk = audio[start_ms:end_ms]
-                
-                chunk_path = f"{base_name}_chunk_{i}.mp3"
-                # 导出时明确指定参数，确保音轨正确保存
-                chunk.export(
-                    chunk_path,
-                    format="mp3",
-                    bitrate="192k",  # 指定比特率
-                    parameters=["-ac", "2"]  # 确保双声道（或保持原声道）
-                )
-                chunks.append(chunk_path)
-                self.temp_files.append(chunk_path)
-                
-                logger.info(f"已创建音频片段 {i+1}/{num_chunks}: {chunk_path} ({len(chunk)/1000:.1f}s)")
-            
+            chunk_seconds = max(1, int(chunk_duration_ms / 1000))
+            output_pattern = f"{base_name}_chunk_%03d.mp3"
+
+            self._run_ffmpeg([
+                '-i', audio_path,
+                '-f', 'segment',
+                '-segment_time', str(chunk_seconds),
+                '-c', 'copy',
+                *self._threads_param(),
+                output_pattern
+            ], "分割音频失败")
+
+            chunk_glob = f"{base_name}_chunk_*.mp3"
+            chunks = sorted(glob.glob(chunk_glob))
+            self.temp_files.extend(chunks)
+
+            logger.info(f"音频分割完成，共 {len(chunks)} 段")
             return chunks
             
         except Exception as e:
@@ -136,21 +141,33 @@ class AudioExtractor:
             包含时长、格式、大小等信息的字典
         """
         try:
-            audio = AudioSegment.from_file(audio_path)
+            cmd = [
+                'ffprobe',
+                '-v', 'error',
+                '-show_entries', 'format=duration,size,format_name',
+                '-of', 'json',
+                audio_path,
+            ]
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            metadata = json.loads(result.stdout or '{}')
+            format_info = metadata.get('format', {})
             file_size = os.path.getsize(audio_path)
+            duration_seconds = float(format_info.get('duration', 0.0) or 0.0)
             
             info = {
-                'duration_seconds': len(audio) / 1000,
-                'duration_formatted': self._format_duration(len(audio) / 1000),
-                'channels': audio.channels,
-                'sample_rate': audio.frame_rate,
+                'duration_seconds': duration_seconds,
+                'duration_formatted': self._format_duration(duration_seconds),
                 'file_size_mb': file_size / (1024 * 1024),
-                'format': os.path.splitext(audio_path)[1][1:]
+                'format': format_info.get('format_name', os.path.splitext(audio_path)[1][1:]),
+                'metadata': metadata
             }
             
             logger.info(f"音频信息: {info}")
             return info
             
+        except subprocess.CalledProcessError as e:
+            logger.error(f"获取音频信息失败: {e.stderr or str(e)}")
+            raise
         except Exception as e:
             logger.error(f"获取音频信息失败: {str(e)}")
             raise

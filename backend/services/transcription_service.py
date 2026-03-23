@@ -5,6 +5,7 @@ import os
 import uuid
 from typing import Dict, Optional
 from core import AudioExtractor, WhisperEngine
+from app.config import Config
 from utils.logger import get_logger
 from utils.file_handler import get_file_size_mb
 from utils.validators import is_video_file, is_audio_file
@@ -25,9 +26,9 @@ class TranscriptionService:
         Args:
             model_size: Whisper模型大小
         """
-        self.engine = WhisperEngine(model_size)
-        self.audio_extractor = AudioExtractor()
-        logger.info(f"转写服务已初始化，模型: {model_size}")
+        self.engine = WhisperEngine(model_size=model_size, mode=Config.WHISPER_MODE)
+        self.audio_extractor = AudioExtractor(mode=Config.WHISPER_MODE)
+        logger.info(f"转写服务已初始化，模型: {model_size}, 模式: {Config.WHISPER_MODE}")
     
     def transcribe_file(
         self,

@@ -4,7 +4,7 @@
 """
 import os
 import gc
-from typing import List, Dict, Optional
+from typing import List, Dict
 from utils.logger import get_logger
 logger = get_logger(__name__)
 
@@ -19,10 +19,7 @@ class WhisperEngine:
     def __init__(
         self,
         model_size: str = "base",
-        mode: str = "local",
-        device: str = "cpu",
-        fp16: bool = False,
-        server_config: Optional[Dict] = None
+        mode: str = "local"
     ):
         """
         初始化Whisper引擎
@@ -30,10 +27,9 @@ class WhisperEngine:
         Args:
             model_size: 模型大小 (tiny/base/small/medium/large)
             mode: 运行模式 ('local' 或 'server')
-            device: 运行设备 ('cpu' 或 'cuda')
-            fp16: 是否启用 fp16
-            server_config: 服务器优化配置
         """
+        import torch
+
         if model_size not in self.AVAILABLE_MODELS:
             logger.warning(f"不支持的模型: {model_size}, 使用默认模型 'base'")
             model_size = "base"
@@ -47,20 +43,23 @@ class WhisperEngine:
             normalized_mode = "local"
 
         self.mode = normalized_mode
-        self.device = device
-        self.fp16 = fp16
-
-        self.server_config = server_config or {
-            'enable_chunking': True,
-            'chunk_size': 45,
-            'max_audio_duration': 180,
-            'unload_after_use': True,
-        }
-
-        # server 模式强制保命参数
-        if self.mode == 'server':
+        
+        if self.mode == 'local':
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.fp16 = True if self.device == "cuda" else False
+            self.server_config = {
+                'enable_chunking': False,
+                'unload_after_use': False,
+            }
+        else:
             self.device = 'cpu'
             self.fp16 = False
+            self.server_config = {
+                'enable_chunking': True,
+                'chunk_size': 45,
+                'max_audio_duration': 180,
+                'unload_after_use': True,
+            }
         
         logger.info(f"Whisper引擎已初始化 [模式: {self.mode}, 模型: {model_size}, 设备: {self.device}]")
         if self.mode == 'server':

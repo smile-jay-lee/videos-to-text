@@ -21,7 +21,8 @@ class Config:
     MAX_CONTENT_LENGTH = 2 * 1024 * 1024 * 1024  # 2GB
     
     # Whisper配置
-    WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'base')
+    WHISPER_MODE = os.getenv('WHISPER_MODE', 'local').lower()
+    WHISPER_MODEL = 'base'
     DEFAULT_LANGUAGE = 'zh'
     
     # AI配置
