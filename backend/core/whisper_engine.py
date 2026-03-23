@@ -3,25 +3,36 @@
 负责语音识别转写功能
 """
 import os
-from typing import List, Dict
+import gc
+from typing import List, Dict, Optional
 from utils.logger import get_logger
-
 logger = get_logger(__name__)
 
 # 注意：whisper 在 load_model() 内延迟导入，避免 numba/numpy 版本冲突影响应用启动
 
 
 class WhisperEngine:
-    """Whisper转写引擎"""
+    """Whisper转写引擎（支持本地/服务器优化模式）"""
     
     AVAILABLE_MODELS = ['tiny', 'base', 'small', 'medium', 'large']
     
-    def __init__(self, model_size: str = "base"):
+    def __init__(
+        self,
+        model_size: str = "base",
+        mode: str = "local",
+        device: str = "cpu",
+        fp16: bool = False,
+        server_config: Optional[Dict] = None
+    ):
         """
         初始化Whisper引擎
         
         Args:
             model_size: 模型大小 (tiny/base/small/medium/large)
+            mode: 运行模式 ('local' 或 'server')
+            device: 运行设备 ('cpu' 或 'cuda')
+            fp16: 是否启用 fp16
+            server_config: 服务器优化配置
         """
         if model_size not in self.AVAILABLE_MODELS:
             logger.warning(f"不支持的模型: {model_size}, 使用默认模型 'base'")
@@ -29,7 +40,33 @@ class WhisperEngine:
         
         self.model_size = model_size
         self.model = None
-        logger.info(f"Whisper引擎已初始化，模型: {model_size}")
+        
+        normalized_mode = (mode or "local").lower()
+        if normalized_mode not in ("local", "server"):
+            logger.warning(f"不支持的模式: {mode}, 使用默认模式 'local'")
+            normalized_mode = "local"
+
+        self.mode = normalized_mode
+        self.device = device
+        self.fp16 = fp16
+
+        self.server_config = server_config or {
+            'enable_chunking': True,
+            'chunk_size': 45,
+            'max_audio_duration': 180,
+            'unload_after_use': True,
+        }
+
+        # server 模式强制保命参数
+        if self.mode == 'server':
+            self.device = 'cpu'
+            self.fp16 = False
+        
+        logger.info(f"Whisper引擎已初始化 [模式: {self.mode}, 模型: {model_size}, 设备: {self.device}]")
+        if self.mode == 'server':
+            logger.info(f"服务器优化已启用: 分块={self.server_config['enable_chunking']}, "
+                       f"块大小={self.server_config['chunk_size']}秒, "
+                       f"自动卸载={self.server_config['unload_after_use']}")
     
     def load_model(self):
         """加载Whisper模型"""
@@ -56,8 +93,18 @@ class WhisperEngine:
                         logger.warning(f"检查模型文件时出错: {check_err}")
                 
                 # 加载模型（如果文件损坏，whisper会自动重新下载）
-                self.model = whisper.load_model(self.model_size, download_root=download_root)
+                self.model = whisper.load_model(
+                    self.model_size,
+                    download_root=download_root,
+                    device=self.device
+                )
                 logger.info(f"模型加载成功")
+                
+                # 服务器模式：加载后立即回收内存
+                if self.mode == 'server':
+                    gc.collect()
+                    logger.debug("已执行内存回收（模型加载后）")
+                    
             except RuntimeError as e:
                 # 捕获SHA256校验失败的错误
                 if "SHA256 checksum does not" in str(e):
@@ -70,28 +117,35 @@ class WhisperEngine:
                 logger.error(f"加载模型失败: {str(e)}")
                 raise
     
-    def transcribe(self, audio_path: str, language: str = "zh", **kwargs) -> Dict:
+    def transcribe(
+        self,
+        audio_path: str,
+        language: str = "zh",
+        auto_unload: bool = True,
+        **kwargs
+    ) -> Dict:
         """
         转写单个音频文件
         
         Args:
             audio_path: 音频文件路径
             language: 语言代码 (zh/en等)
+            auto_unload: 是否在转写结束后自动卸载模型（server模式）
             **kwargs: 其他whisper参数
             
         Returns:
             包含text和segments的字典
         """
         try:
+            # 检查文件是否存在
+            if not os.path.exists(audio_path):
+                raise FileNotFoundError(f"音频文件不存在: {audio_path}")
+            
             # 确保模型已加载
             if self.model is None:
                 self.load_model()
             
             logger.info(f"开始转写音频: {audio_path} (语言: {language})")
-            
-            # 检查文件是否存在
-            if not os.path.exists(audio_path):
-                raise FileNotFoundError(f"音频文件不存在: {audio_path}")
             
             # 准备转写参数
             transcribe_options = {
@@ -103,6 +157,7 @@ class WhisperEngine:
                 'compression_ratio_threshold': 2.4,   # 检测重复内容
                 'logprob_threshold': -1.0,            # 质量阈值
                 'no_speech_threshold': 0.6,           # 静音检测阈值
+                'fp16': self.fp16,
             }
             
             # 如果是中文，添加优化参数
@@ -132,6 +187,12 @@ class WhisperEngine:
         except Exception as e:
             logger.error(f"转写失败: {str(e)}")
             raise
+        finally:
+            if self.mode == 'server':
+                gc.collect()
+                logger.debug("已执行内存回收（transcribe 结束）")
+                if self.server_config.get('unload_after_use') and auto_unload:
+                    self._unload_model()
     
     def transcribe_chunks(self, chunk_paths: List[str], language: str = "zh") -> Dict:
         """
@@ -157,18 +218,31 @@ class WhisperEngine:
             for i, chunk_path in enumerate(chunk_paths):
                 logger.info(f"正在转写第 {i+1}/{len(chunk_paths)} 段")
                 
-                result = self.transcribe(chunk_path, language)
-                all_text.append(result["text"])
-                
-                # 调整segments的时间偏移
-                for segment in result.get("segments", []):
-                    segment["start"] += time_offset
-                    segment["end"] += time_offset
-                    all_segments.append(segment)
-                
-                # 更新时间偏移（使用最后一个segment的结束时间）
-                if result.get("segments"):
-                    time_offset = result["segments"][-1]["end"]
+                try:
+                    result = self.transcribe(chunk_path, language, auto_unload=False)
+                    all_text.append(result["text"])
+                    
+                    # 调整segments的时间偏移
+                    for segment in result.get("segments", []):
+                        segment["start"] += time_offset
+                        segment["end"] += time_offset
+                        all_segments.append(segment)
+                    
+                    # 更新时间偏移（使用最后一个segment的结束时间）
+                    if result.get("segments"):
+                        time_offset = result["segments"][-1]["end"]
+                    
+                    # 服务器模式：每处理完一个块后回收内存
+                    if self.mode == 'server':
+                        gc.collect()
+                        logger.debug(f"已执行内存回收（第 {i+1} 块处理后）")
+                finally:
+                    if os.path.exists(chunk_path):
+                        try:
+                            os.remove(chunk_path)
+                            logger.debug(f"已清理临时片段: {chunk_path}")
+                        except OSError as remove_err:
+                            logger.warning(f"清理临时片段失败: {chunk_path}, 错误: {remove_err}")
             
             # 合并文本
             full_text = " ".join(all_text)
@@ -184,6 +258,20 @@ class WhisperEngine:
         except Exception as e:
             logger.error(f"分段转写失败: {str(e)}")
             raise
+        finally:
+            if self.mode == 'server':
+                gc.collect()
+                if self.server_config.get('unload_after_use'):
+                    self._unload_model()
+    
+    def _unload_model(self):
+        """卸载模型以释放内存（仅服务器模式）"""
+        if self.model is not None:
+            logger.info("正在卸载模型以释放内存...")
+            del self.model
+            self.model = None
+            gc.collect()
+            logger.info("模型已卸载，内存已释放")
     
     @classmethod
     def get_available_models(cls) -> List[str]:
@@ -195,5 +283,18 @@ class WhisperEngine:
         return {
             "model_size": self.model_size,
             "loaded": self.model is not None,
-            "available_models": self.AVAILABLE_MODELS
+            "available_models": self.AVAILABLE_MODELS,
+            "mode": self.mode,
+            "device": self.device,
+            "server_config": self.server_config if self.mode == 'server' else None
         }
+    
+    def get_config_summary(self) -> str:
+        """获取配置摘要（用于日志输出）"""
+        summary = f"Whisper配置 - 模式: {self.mode}, 模型: {self.model_size}, 设备: {self.device}"
+        if self.mode == 'server':
+            summary += f"\n  服务器优化: 分块处理={self.server_config['enable_chunking']}"
+            summary += f", 块大小={self.server_config['chunk_size']}秒"
+            summary += f", 最大时长={self.server_config['max_audio_duration']}秒"
+            summary += f", 自动卸载={self.server_config['unload_after_use']}"
+        return summary
