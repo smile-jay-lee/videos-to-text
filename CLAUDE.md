@@ -13,8 +13,9 @@
 
 ### 3. Git操作
 - ❌ 禁止使用 GitLens 工具
-- ✅ 必须使用命令行: `git add`, `git commit`, `git push`
+- ✅ 必须使用cmd的命令行: `git add`, `git commit`, `git push`
 - 提交信息要清晰描述改动
+- 不是powershell的命令，一定是cmd的命令: `git add`, `git commit`, `git push`
 
 ### 4. 终端命令
 - PowerShell使用 `;` 连接命令（不用 `&&`）
