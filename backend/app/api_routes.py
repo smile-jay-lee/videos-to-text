@@ -8,7 +8,8 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify, send_file, current_app
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from services import TranscriptionService, TextService
+from services import get_cached_transcription_service, TextService
+from services.transcription_service import TranscriptionService
 from services.gemini_service import get_gemini_service
 from utils.validators import validate_file, get_secure_filename
 from utils.file_handler import ensure_dir, cleanup_file
@@ -63,7 +64,7 @@ def transcribe():
             return jsonify({'error': '未选择文件'}), 400
         
         file = request.files['file']
-        model = request.form.get('model', current_app.config.get('WHISPER_MODEL', 'base'))
+        model = request.form.get('model', current_app.config.get('WHISPER_MODEL', 'medium'))
         use_ai = request.form.get('use_ai', 'false').lower() == 'true'
         
         # 验证文件
@@ -83,8 +84,8 @@ def transcribe():
         
         logger.info(f"开始处理: {task_id} - {filename} (model: {model}, AI: {use_ai})")
         
-        # 创建转录服务
-        transcription_service = TranscriptionService(model_size=model)
+        # 获取进程级常驻转录服务（按模型复用）
+        transcription_service = get_cached_transcription_service(model_size=model)
         
         # 执行转录（明确指定中文）
         result = transcription_service.transcribe_file(file_path, language='zh')
@@ -346,7 +347,7 @@ def transcribe_url():
     try:
         data = request.get_json(silent=True) or {}
         url      = data.get('url', '').strip()
-        model    = data.get('model', current_app.config.get('WHISPER_MODEL', 'base'))
+        model    = data.get('model', current_app.config.get('WHISPER_MODEL', 'medium'))
         use_ai   = bool(data.get('use_ai', False))
         page_num = data.get('page_num', None)   # None → 第 1 P
 

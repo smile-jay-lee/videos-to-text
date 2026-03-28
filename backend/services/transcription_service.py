@@ -3,6 +3,7 @@
 """
 import os
 import uuid
+import threading
 from typing import Dict, Optional
 from core import AudioExtractor, WhisperEngine
 from app.config import Config
@@ -12,6 +13,9 @@ from utils.validators import is_video_file, is_audio_file
 
 logger = get_logger(__name__)
 
+_SERVICE_CACHE = {}
+_SERVICE_LOCK = threading.Lock()
+
 
 class TranscriptionService:
     """转写服务"""
@@ -19,16 +23,23 @@ class TranscriptionService:
     # 大文件阈值（MB）
     LARGE_FILE_THRESHOLD = 25
     
-    def __init__(self, model_size: str = "base"):
+    def __init__(self, model_size: str = "medium", keep_model_loaded: bool = True):
         """
         初始化转写服务
         
         Args:
             model_size: Whisper模型大小
+            keep_model_loaded: 是否常驻模型（True时不会在任务后自动卸载）
         """
         self.engine = WhisperEngine(model_size=model_size, mode=Config.WHISPER_MODE)
+        self.keep_model_loaded = keep_model_loaded
+        if self.keep_model_loaded and self.engine.mode == 'server':
+            # 常驻模式下禁用每次任务自动卸载，确保模型复用
+            self.engine.server_config['unload_after_use'] = False
         self.audio_extractor = AudioExtractor(mode=Config.WHISPER_MODE)
-        logger.info(f"转写服务已初始化，模型: {model_size}, 模式: {Config.WHISPER_MODE}")
+        logger.info(
+            f"转写服务已初始化，模型: {model_size}, 模式: {Config.WHISPER_MODE}, 常驻: {self.keep_model_loaded}"
+        )
     
     def transcribe_file(
         self,
@@ -178,3 +189,20 @@ class TranscriptionService:
     def get_model_info(self) -> Dict:
         """获取模型信息"""
         return self.engine.get_model_info()
+
+
+def get_cached_transcription_service(model_size: str = "medium", preload_model: bool = False) -> TranscriptionService:
+    """获取进程级缓存的转写服务（按模型复用）"""
+    key = (model_size or "medium").lower()
+
+    with _SERVICE_LOCK:
+        service = _SERVICE_CACHE.get(key)
+        if service is None:
+            service = TranscriptionService(model_size=key, keep_model_loaded=True)
+            _SERVICE_CACHE[key] = service
+            logger.info(f"已创建常驻转写服务实例: {key}")
+
+    if preload_model:
+        service.engine.load_model()
+
+    return service

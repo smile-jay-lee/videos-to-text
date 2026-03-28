@@ -7,7 +7,7 @@ const api = axios.create({
   timeout: 600000, // 10分钟超时
 })
 
-export const uploadVideo = async (file, model = 'base', useAI = false) => {
+export const uploadVideo = async (file, model = 'medium', useAI = false) => {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('model', model)
@@ -46,7 +46,7 @@ export const getBiliInfo = async (url) => {
  * @param {string}  model    Whisper 模型
  * @param {boolean} useAI    是否 AI 润色
  */
-export const transcribeUrl = async (url, pageNum, model = 'small', useAI = false) => {
+export const transcribeUrl = async (url, pageNum, model = 'medium', useAI = false) => {
   try {
     const response = await api.post('/transcribe-url', {
       url,

@@ -31,5 +31,14 @@ def create_app(config_class=Config):
     # 注册传统路由（用于模板渲染，可选）
     from app import routes
     app.register_blueprint(routes.bp)
+
+    # 进程启动时预加载默认模型，后续任务直接复用
+    default_model = app.config.get('WHISPER_MODEL', 'medium')
+    try:
+        from services import get_cached_transcription_service
+        get_cached_transcription_service(model_size=default_model, preload_model=True)
+    except Exception as e:
+        # 启动不因预加载失败而中断，错误在首个任务时仍会暴露
+        app.logger.warning(f"Whisper默认模型预加载失败: {e}")
     
     return app

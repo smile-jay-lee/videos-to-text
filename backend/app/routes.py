@@ -5,7 +5,7 @@ import os
 import uuid
 from flask import Blueprint, render_template, request, jsonify, send_file, current_app
 from werkzeug.utils import secure_filename
-from services import TranscriptionService, TextService
+from services import get_cached_transcription_service, TextService
 from utils.validators import validate_file, get_secure_filename
 from utils.file_handler import ensure_dir, cleanup_file
 from utils.logger import get_logger
@@ -97,8 +97,8 @@ def transcribe():
         
         logger.info(f"开始转写任务: {task_id}")
         
-        # 创建转写服务
-        service = TranscriptionService(model_size=model)
+        # 获取进程级常驻转写服务（按模型复用）
+        service = get_cached_transcription_service(model_size=model)
         
         # 定义进度回调
         def update_progress(tid, progress, message):

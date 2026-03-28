@@ -8,6 +8,7 @@ const MODEL_OPTIONS = [
   { value: 'base',   label: 'Base',   note: '快速' },
   { value: 'small',  label: 'Small',  note: '推荐' },
   { value: 'medium', label: 'Medium', note: '精准' },
+  { value: 'large',  label: 'Large',  note: '最慢但最全' },
 ]
 
 const STEP_LABELS = {
@@ -65,7 +66,7 @@ function ProgressSteps({ steps, stepIdx, phase }) {
 
 function UploadPage({ onSuccess }) {
   const [mode, setMode]         = useState('url')
-  const [model, setModel]       = useState('small')
+  const [model, setModel]       = useState('medium')
   const [useAI, setUseAI]       = useState(false)
   const [file, setFile]         = useState(null)
   const [dragOver, setDragOver] = useState(false)

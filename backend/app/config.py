@@ -22,7 +22,7 @@ class Config:
     
     # Whisper配置
     WHISPER_MODE = os.getenv('WHISPER_MODE', 'local').lower()
-    WHISPER_MODEL = 'base'
+    WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'medium').lower()
     DEFAULT_LANGUAGE = 'zh'
     
     # AI配置
